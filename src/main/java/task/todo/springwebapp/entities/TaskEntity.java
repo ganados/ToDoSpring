@@ -62,4 +62,13 @@ public class TaskEntity {
     public void setUuid() {
         this.uuid = UUID.randomUUID();
     }
+
+    @Override
+    public String toString() {
+        return "TaskEntity{" +
+                "uuid=" + uuid + '\'' +
+                ", description='" + description + '\'' +
+                ", due='" + due +
+                '}';
+    }
 }

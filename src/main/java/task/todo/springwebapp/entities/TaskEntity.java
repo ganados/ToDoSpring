@@ -66,9 +66,9 @@ public class TaskEntity {
     @Override
     public String toString() {
         return "TaskEntity{" +
-                "uuid=" + uuid + '\'' +
-                ", description='" + description + '\'' +
-                ", due='" + due +
+                "uuid :" + uuid + '\'' +
+                ", description :'" + description + '\'' +
+                ", due :'" + due +
                 '}';
     }
 }

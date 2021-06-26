@@ -50,7 +50,7 @@ public class UserController extends Exception{
                 || userEntity.getUsername().isBlank() || userEntity.getPassword().isBlank()) {
             throw new BadRequestException();
         }
-        if(toDoService.getUserRepository().query(userEntity.getUsername()) != null) {
+        else if(toDoService.getUserRepository().query(userEntity.getUsername()) != null) {
             throw new UserAlreadyExistsException();
         }
     }

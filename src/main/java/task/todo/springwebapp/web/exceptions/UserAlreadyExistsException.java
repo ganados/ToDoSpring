@@ -4,13 +4,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 
-import javax.naming.AuthenticationException;
 import java.io.IOException;
 
 @ControllerAdvice
-public class UserAlreadyExistsException extends AuthenticationException {
+public class UserAlreadyExistsException extends RuntimeException {
     @ExceptionHandler(IOException.class)
-    public ResponseEntity<Object> handle(AuthenticationException exception){
+    public ResponseEntity<Object> handle(RuntimeException exception){
         exception.printStackTrace();
         return ResponseEntity.badRequest().build();
     }

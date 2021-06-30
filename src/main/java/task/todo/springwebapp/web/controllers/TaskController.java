@@ -1,6 +1,7 @@
 package task.todo.springwebapp.web.controllers;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import task.todo.springwebapp.SpringwebappApplication;
@@ -9,6 +10,7 @@ import task.todo.springwebapp.entities.UserEntity;
 import task.todo.springwebapp.service.ToDoService;
 import task.todo.springwebapp.web.exceptions.AuthorizationException;
 import task.todo.springwebapp.web.exceptions.BadRequestException;
+import task.todo.springwebapp.web.exceptions.NoUserException;
 import task.todo.springwebapp.web.exceptions.taskBelongToOtherUserException;
 import task.todo.springwebapp.web.utils.UserDecoder;
 
@@ -31,43 +33,45 @@ public class TaskController {
 
     @ResponseBody
     @PostMapping("todo/task")
-    public String createTask(@RequestBody TaskEntity taskEntity, @RequestHeader("auth") String header){
+    public ResponseEntity<String> createTask(@RequestBody TaskEntity taskEntity, @RequestHeader("auth") String header){
         UserEntity userEntity;
 
-        userEntity = getUserEntity(header,"TaskPost");
-
         try{
+            userEntity = getUserEntity(header, "TaskPost");
             validateTask(taskEntity);
         } catch(BadRequestException exception){
             LOGGER.warning("TaskPost::validateTask: BadRequest exception");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing task data", exception);
+            return new ResponseEntity<>("Missing task data", HttpStatus.BAD_REQUEST);
+        } catch(NoUserException exception){
+            LOGGER.warning("TaskPost::validateUser: Authorization exception");
+            return new ResponseEntity<>("User not found or invalid password", HttpStatus.UNAUTHORIZED);
         }
         LOGGER.info("TaskPost::saveTask: Saving task...");
         taskEntity.setUuid();
         taskEntity.setUsername(userEntity.getUsername());
         toDoService.saveTask(taskEntity);
 
-        return taskEntity.getUuid().toString();
+        return new ResponseEntity<>(taskEntity.getUuid().toString(), HttpStatus.OK);
     }
 
-    private UserEntity getUserEntity(@RequestHeader("auth") String header, String s) {
+    private UserEntity getUserEntity(String header, String s) {
         UserEntity userEntity;
         try {
             UserDecoder userDecoder = new UserDecoder();
             userEntity = userDecoder.decodeUser(header);
-        } catch (AuthenticationException exception) {
+        } catch (AuthorizationException exception) {
             LOGGER.warning(s + "::userDecoder: Authorization exception");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing headers or data", exception);
+            throw new BadRequestException();
         } catch (BadRequestException exception) {
             LOGGER.warning(s + "::userDecoder: BadRequest exception");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid headers", exception);
+            throw new BadRequestException();
         }
 
         try {
             validateUser(userEntity);
         } catch (AuthorizationException exception) {
             LOGGER.warning(s + "::validateUser: Unauthorized exception");
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No user or invalid password", exception);
+            throw new NoUserException();
         }
         return userEntity;
     }
@@ -86,6 +90,9 @@ public class TaskController {
         } catch(NullPointerException exception){
             throw new AuthorizationException();
         }
+        if(tempUser == null){
+            throw new AuthorizationException();
+        }
         if(!(tempUser.getPassword().equals(userEntity.getPassword()))){
             throw new AuthorizationException();
         }
@@ -93,11 +100,11 @@ public class TaskController {
 
     @ResponseBody
     @GetMapping("todo/task")
-    public List<String> getUserTaskList(@RequestHeader("auth") String header){
+    public ResponseEntity<String> getUserTaskList(@RequestHeader("auth") String header){
         UserEntity userEntity = getUserEntity(header, "TaskGetTaskList");
 
         LOGGER.info("TaskGetTasks::getUserTaskList: Returning tasks list");
-        return getTasks(userEntity);
+        return new ResponseEntity<>(getTasks(userEntity).toString(), HttpStatus.OK);
     }
 
     private List<String> getTasks(UserEntity userEntity){
@@ -114,27 +121,30 @@ public class TaskController {
 
     @ResponseBody
     @GetMapping("todo/task/{id}")
-    public String getUserTask(@RequestHeader("auth") String header, @PathVariable UUID id){
+    public ResponseEntity<String> getUserTask(@RequestHeader("auth") String header, @PathVariable UUID id){
         UserEntity userEntity = getUserEntity(header, "getUserTask");
         TaskEntity taskEntity;
         try {
             taskEntity = checkTaskRequest(userEntity, id);
         } catch(BadRequestException exception){
             LOGGER.warning("TaskGetTaskDetails::checkTaskRequest: Task not found");
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Task not found", exception);
+            return new ResponseEntity<>("Task not found", HttpStatus.NOT_FOUND);
         } catch(taskBelongToOtherUserException exception){
             LOGGER.warning("TaskGetTaskDetails::checkTaskRequest: Task belong to another user");
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task belong to another user", exception);
+            return new ResponseEntity<>("Task belong to another user", HttpStatus.FORBIDDEN);
         }
         LOGGER.warning("TaskGetTaskDetails::getUserTask: Returning task details");
-        return taskEntity.toString();
+        return new ResponseEntity<>(taskEntity.toString(), HttpStatus.OK);
     }
 
-    TaskEntity checkTaskRequest(UserEntity userEntity, UUID id) {
+    private TaskEntity checkTaskRequest(UserEntity userEntity, UUID id) {
         TaskEntity taskEntity;
         try {
             taskEntity = toDoService.getTaskRepository().query(id);
         } catch (NullPointerException exception) {
+            throw new BadRequestException();
+        }
+        if(taskEntity == null){
             throw new BadRequestException();
         }
         if (!taskEntity.getUsername().equals(userEntity.getUsername())) {

@@ -1,24 +1,21 @@
 package task.todo.springwebapp;
 
 import com.google.gson.Gson;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.InjectMocks;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit.jupiter.SpringExtension;
-import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import task.todo.springwebapp.service.ToDoService;
+import task.todo.springwebapp.web.controllers.UserController;
 
 import java.util.HashMap;
 
@@ -26,14 +23,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 
-@AutoConfigureMockMvc
-@SpringBootTest
+@RunWith(SpringRunner.class)
+@WebMvcTest(UserController.class)
 class SpringwebappApplicationTests {
 
 	private static final String APP_PATH = "http://localhost:8080/todo";
 	private static final String USER_PATH = "/user";
 
 	private static final Gson gson = new Gson();
+
+	@MockBean
+	ToDoService toDoService;
 
 	@Autowired
 	private MockMvc mockMvc;
@@ -48,10 +48,12 @@ class SpringwebappApplicationTests {
 		String string = gson.toJson(names);
 
 		this.mockMvc
-				.perform(post(APP_PATH + USER_PATH)
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(string))
-				.andExpect(status().isOk());
+				.perform(MockMvcRequestBuilders
+				.post(APP_PATH + USER_PATH)
+				.content(string)
+				.contentType(MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(status().isCreated());
 	}
 
 	@Timeout(1)
@@ -67,30 +69,34 @@ class SpringwebappApplicationTests {
 		String string = gson.toJson(map);
 
 		this.mockMvc
-				.perform(post(APP_PATH + USER_PATH)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(string))
+				.perform(MockMvcRequestBuilders
+						.post(APP_PATH + USER_PATH)
+						.content(string)
+						.contentType(MediaType.APPLICATION_JSON)
+						.accept(MediaType.APPLICATION_JSON))
 				.andExpect(status().isBadRequest());
 	}
 
-//	@Timeout(1)
-//	@Test
-//	public void shouldReturnConflictCode_whileDoubleUser() throws Exception {
-//		HashMap<String, String> names = new HashMap<>();
-//		names.put("username", "janKowalski");
-//		names.put("password", "abcd213");
-//
-//		String string = gson.toJson(names);
-//
-//		this.mockMvc
-//				.perform(post(APP_PATH + USER_PATH)
-//				.contentType(MediaType.APPLICATION_JSON)
-//				.content(string));
-//		this.mockMvc
-//				.perform(post(APP_PATH + USER_PATH)
-//						.contentType(MediaType.APPLICATION_JSON)
-//						.content(string))
-//				.andExpect(status().isConflict());
-//	}
+	@Timeout(1)
+	@Test
+	public void shouldReturnConflictCode_whileDoubleUser() throws Exception {
+		HashMap<String, String> names = new HashMap<>();
+		names.put("username", "janKowalski");
+		names.put("password", "abcd213");
+
+		String string = gson.toJson(names);
+
+		this.mockMvc
+				.perform(MockMvcRequestBuilders
+						.post(APP_PATH + USER_PATH)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(string));
+		this.mockMvc
+				.perform(MockMvcRequestBuilders
+						.post(APP_PATH + USER_PATH)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(string))
+				.andExpect(status().isConflict());
+	}
 
 }

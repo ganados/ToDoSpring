@@ -1,6 +1,7 @@
 package task.todo.springwebapp.web.controllers;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -27,31 +28,21 @@ public class UserController extends Exception{
 
     @ResponseBody
     @PostMapping("/todo/user")
-    public String createUser(@RequestBody UserEntity userEntity) throws Exception {
+    public ResponseEntity<String> createUser(@RequestBody UserEntity userEntity) {
 
         try {
-            validateUser(userEntity);
+            toDoService.saveUser(userEntity);
         }catch(BadRequestException exception){
             LOGGER.warning("UserPost::validateUser: BadRequest exception");
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing data (username or password)", exception);
+            return new ResponseEntity<String>("Invalid body", HttpStatus.BAD_REQUEST);
         }catch(UserAlreadyExistsException exception){
             LOGGER.warning("UserPost::validateUser: Conflict exception");
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "User already exists", exception);
+            return new ResponseEntity<String>("User exists", HttpStatus.CONFLICT);
         }
 
-        LOGGER.info("UserPost::saveUser: Saving user...");
-        toDoService.saveUser(userEntity);
+        LOGGER.info("UserPost::saveUser: Saving user successful");
 
-        return userEntity.getUsername();
+        return new ResponseEntity<String>(userEntity.getUsername(), HttpStatus.CREATED);
     }
-    private void validateUser(UserEntity userEntity) throws Exception {
-        if(userEntity == null
-                || userEntity.getUsername() == null || userEntity.getPassword() == null
-                || userEntity.getUsername().isBlank() || userEntity.getPassword().isBlank()) {
-            throw new BadRequestException();
-        }
-        else if(toDoService.getUserRepository().query(userEntity.getUsername()) != null) {
-            throw new UserAlreadyExistsException();
-        }
-    }
+    //TODO: przeniesc walidacje itp do todoService
 }

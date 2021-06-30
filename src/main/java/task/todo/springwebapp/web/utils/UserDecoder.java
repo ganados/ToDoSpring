@@ -1,9 +1,9 @@
 package task.todo.springwebapp.web.utils;
 
 import task.todo.springwebapp.entities.UserEntity;
+import task.todo.springwebapp.web.exceptions.AuthorizationException;
 import task.todo.springwebapp.web.exceptions.BadRequestException;
 
-import javax.naming.AuthenticationException;
 import java.util.Base64;
 
 public class UserDecoder {
@@ -14,7 +14,7 @@ public class UserDecoder {
         this.decoder = Base64.getDecoder();
     }
 
-    public UserEntity decodeUser(String header) throws AuthenticationException {
+    public UserEntity decodeUser(String header) {
         if(header == null || header.isBlank()){
             throw new BadRequestException();
         }
@@ -27,23 +27,23 @@ public class UserDecoder {
         return getUser(splitHeader[0], splitHeader[1]);
     }
 
-    private UserEntity getUser(String usernameEncoded, String passwordEncoded) throws AuthenticationException {
+    private UserEntity getUser(String usernameEncoded, String passwordEncoded) throws AuthorizationException {
         String username;
         String password;
 
         try{
             username = new String(decoder.decode(usernameEncoded));
         } catch(IllegalArgumentException exception){
-            throw new AuthenticationException();
+            throw new AuthorizationException();
         }
         try{
             password = new String(decoder.decode(passwordEncoded));
         } catch(IllegalArgumentException exception){
-            throw new AuthenticationException();
+            throw new AuthorizationException();
         }
 
         if(username.isBlank() || password.isBlank()){
-            throw new AuthenticationException();
+            throw new AuthorizationException();
         }
 
         return new UserEntity(username, password);
